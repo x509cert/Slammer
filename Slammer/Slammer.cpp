@@ -1,11 +1,10 @@
-#define _CRT_SECURE_CPP_OVERLOAD_STANDARD_NAMES 1
-
 #include "stdio.h"  
 #include "winsock2.h"
 
-// dear compiler, please help me generate insecure code
+// dear compiler, please help me generate insecure code!
 #define _CRT_SECURE_NO_WARNINGS
 #pragma warning(disable: 4996)
+//#define _CRT_SECURE_CPP_OVERLOAD_STANDARD_NAMES 1
 
 #pragma comment(lib, "ws2_32.lib")
 
@@ -32,6 +31,9 @@ typedef enum
 	CLNT_UCAST_DEBUG
 } SSRPMSGTYPE;
 
+// fwd ref to keep compiler happy
+void SsrpEnum(LPSTR szInstanceName);
+
 // this socket data is bogus, I added it to make the code compile
 SOCKET gSvrSock = 0;
 sockaddr gClientAddr = { 0 };
@@ -57,7 +59,7 @@ SSRPMSGTYPE SsrpRecvMsg(BYTE* rgbRecvBuf) {
 
 /////////////////////////////////////////////////////////////////////////
 void SsrpSvr(LPSTR szInstanceName) {
-	BYTE rgbRecvBuf[MAX_RECV_MSG];
+	BYTE rgbRecvBuf[MAX_RECV_MSG]; // <-- Step 0: Create the buffer
 	memset(rgbRecvBuf, 0, MAX_RECV_MSG);
 
 	SSRPMSGTYPE ssrpMsg = SsrpRecvMsg(rgbRecvBuf);
@@ -117,10 +119,9 @@ int main(int argc, char** argv) {
 		return 1;
 	}
 
-	OpenSocket();
-	
-	while(true)
-		SsrpSvr((LPSTR)"MSSQLServer");
-
+	if (OpenSocket()) {
+		while (true)
+			SsrpSvr((LPSTR)"MSSQLServer");
+	}
 	WSACleanup();
  }
