@@ -1,7 +1,9 @@
-//#include "windows.h"
+#define _CRT_SECURE_CPP_OVERLOAD_STANDARD_NAMES 1
+
 #include "stdio.h"  
 #include "winsock2.h"
 
+// dear compiler, please help me generate insecure code
 #define _CRT_SECURE_NO_WARNINGS
 #pragma warning(disable: 4996)
 
@@ -27,7 +29,7 @@ typedef enum
 	CLNT_ACTIVE,
 	SVR_TIMEOUT,
 	CLNT_UCAST_DAC,
-	CLNT_UCAST_DEBUG,
+	CLNT_UCAST_DEBUG
 } SSRPMSGTYPE;
 
 // this socket data is bogus, I added it to make the code compile
@@ -35,9 +37,10 @@ SOCKET gSvrSock = 0;
 sockaddr gClientAddr = { 0 };
 int cClientAddr = sizeof(gClientAddr);
 
+/////////////////////////////////////////////////////////////////////////
 SSRPMSGTYPE SsrpRecvMsg(BYTE* rgbRecvBuf) {
 	cClientAddr = sizeof(gClientAddr);
-	int bytesRecd = recvfrom(gSvrSock, (char*)rgbRecvBuf, 
+	int bytesRecd = recvfrom(gSvrSock, (char*)rgbRecvBuf, // <-- Step 1: rgbRecvBuf is tainted, straight off of UDP/1434
 		MAX_RECV_MSG, 0,
 		(SOCKADDR*)&gClientAddr, &cClientAddr);
 	
@@ -52,12 +55,8 @@ SSRPMSGTYPE SsrpRecvMsg(BYTE* rgbRecvBuf) {
 	return((SSRPMSGTYPE)rgbRecvBuf[0]);
 }
 
-void SsrpEnum(LPSTR szInstanceName) {
-	char szregVersion[128];
-	sprintf(szregVersion, "%s%s\\MSSQLServer\\CurrentVersion", INSTREGKEY, szInstanceName);
-}
-
-void SsrpSvr(LPSTR szInstanceName)  {
+/////////////////////////////////////////////////////////////////////////
+void SsrpSvr(LPSTR szInstanceName) {
 	BYTE rgbRecvBuf[MAX_RECV_MSG];
 	memset(rgbRecvBuf, 0, MAX_RECV_MSG);
 
@@ -65,18 +64,25 @@ void SsrpSvr(LPSTR szInstanceName)  {
 	printf("SSRPMSGTYPE: %d\n", ssrpMsg);
 
 	switch (ssrpMsg) {
-		case CLNT_UCAST_INST: // Value == 4
-			SsrpEnum((LPSTR)&rgbRecvBuf[1]);
-			break;
+	case CLNT_UCAST_INST: // Value == 4
+		SsrpEnum((LPSTR)&rgbRecvBuf[1]); // <-- Step 2: rgbRecvBuf is tainted
+		break;
 
-		default: 
-			break;
+	default:
+		break;
 	}
 }
 
+/////////////////////////////////////////////////////////////////////////
+void SsrpEnum(LPSTR szInstanceName) {
+	char szregVersion[128];
+	sprintf(szregVersion, "%s%s\\MSSQLServer\\CurrentVersion", INSTREGKEY, szInstanceName); // <-- Step 3: szInstanceName is tainted and can be 256-bytes, copied into a 128-byte buffer
+}
+
+/////////////////////////////////////////////////////////////////////////
+// All the code below is to simply host the code above
 bool OpenSocket() {
 
-	
 	bool fOK = false;
 	int port = 1434;
 
@@ -103,7 +109,7 @@ bool OpenSocket() {
 
 int main(int argc, char** argv) {
 	argc; argv;
-
+	
 	WSADATA wsaData;
 	WORD wVersionRequested = MAKEWORD(2, 2);
 	if (WSAStartup(wVersionRequested, &wsaData) != 0) {
