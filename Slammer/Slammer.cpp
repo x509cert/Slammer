@@ -50,9 +50,6 @@ SSRPMSGTYPE SsrpRecvMsg(BYTE* rgbRecvBuf) {
 		printf("Error in recvfrom: %d\n", WSAGetLastError());
 		return (SSRPMSGTYPE)0;
 	}
-	else {
-		printf("UDP packet rcvd\n");
-	}
 
 	return((SSRPMSGTYPE)rgbRecvBuf[0]);
 }
